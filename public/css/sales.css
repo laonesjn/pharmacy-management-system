@@ -112,6 +112,12 @@ body {
     border-radius: 8px;
 }
 
+.expiry-warning {
+    grid-column: 1 / -1;
+    color: #b91c1c;
+    font-weight: 600;
+}
+
 .medicine-select {
     width: 100%;
 }

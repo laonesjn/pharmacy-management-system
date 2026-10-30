@@ -6,10 +6,10 @@ const user =
 
 
 if (!token || !user) {
-
-    window.location.href =
-        "/pages/login.html";
+    window.location.href = "/pages/login.html";
 }
+
+
 
 
 document.getElementById("userName")
@@ -80,52 +80,36 @@ let discountOptions = [];
 
 let sales = [];
 
-
-// =====================================================
-// LOAD DISCOUNT OPTIONS
-// =====================================================
-
-async function loadDiscountOptions() {
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/sales/discounts",
-                {
-                    headers: {
-                        "Authorization":
-                            `Bearer ${token}`
-                    }
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            console.error(
-                "Failed to load discounts:",
-                data.message
-            );
-
-            return;
-        }
-
-
-        discountOptions = data;
-
-
-    } catch (error) {
-
-        console.error(
-            "Unable to load discount options:",
-            error
-        );
+function getMedicineExpiryWarning(expiryDate) {
+    if (!expiryDate) {
+        return "Medicine expiry date is missing.";
     }
+
+    const expiry = String(expiryDate).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) {
+        return "Invalid medicine expiry date.";
+    }
+
+    const [year, month, day] = expiry.split("-").map(Number);
+    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    if (
+        parsedDate.getUTCFullYear() !== year ||
+        parsedDate.getUTCMonth() + 1 !== month ||
+        parsedDate.getUTCDate() !== day
+    ) {
+        return "Invalid medicine expiry date.";
+    }
+
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Colombo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+
+    return expiry < today
+        ? "Cannot sell expired medicine."
+        : "";
 }
 
 
@@ -364,7 +348,14 @@ function addSaleItem() {
             ".quantity-input"
         );
 
-    const discountSelect =
+    const expiryWarning =
+        document.createElement("div");
+    expiryWarning.className = "expiry-warning";
+    expiryWarning.setAttribute("aria-live", "polite");
+    expiryWarning.hidden = true;
+    item.appendChild(expiryWarning);
+
+    const priceDisplay =
         item.querySelector(
             ".discount-select"
         );
@@ -412,17 +403,19 @@ function addSaleItem() {
                 .textContent =
                 `Rs. ${sub.toFixed(2)}`;
 
-        } else {
+                const warning =
+                    getMedicineExpiryWarning(medicine.expiry_date);
+                expiryWarning.textContent =
+                    warning ? `${medicine.medicine_name}: ${warning}` : "";
+                expiryWarning.hidden = !warning;
 
-            item.querySelector(".item-gross")
-                .textContent = "Rs. 0.00";
+            } else {
 
-            item.querySelector(".item-discount-amt")
-                .textContent = "- Rs. 0.00";
-
-            item.querySelector(".item-subtotal")
-                .textContent = "Rs. 0.00";
-        }
+                priceDisplay.textContent =
+                    "Rs. 0.00";
+                expiryWarning.textContent = "";
+                expiryWarning.hidden = true;
+            }
 
         calculateTotal();
     }
@@ -464,6 +457,15 @@ function addSaleItem() {
 
     calculateTotal();
 }
+
+addItemBtn.addEventListener("click", function () {
+    if (medicines.length === 0) {
+        alert("No medicines available.");
+        return;
+    }
+
+    addSaleItem();
+});
 
 
 // =====================================================
@@ -656,6 +658,18 @@ completeSaleBtn.addEventListener(
                         Number(m.medicine_id) ===
                         Number(medicineId)
                 );
+
+            if (!medicine) {
+                alert("Selected medicine was not found. Please refresh the sales page.");
+                return;
+            }
+
+            const expiryWarning =
+                getMedicineExpiryWarning(medicine.expiry_date);
+            if (expiryWarning) {
+                alert(`${medicine.medicine_name}: ${expiryWarning}`);
+                return;
+            }
 
 
             if (

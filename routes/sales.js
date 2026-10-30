@@ -9,6 +9,92 @@ const {
 
 const router = express.Router();
 
+// ==========================================
+// CR-002 - MEDICINE EXPIRY VALIDATION
+// ==========================================
+
+function validateMedicineExpiry(expiryDate) {
+
+    // Missing expiry date
+    if (!expiryDate) {
+        return {
+            valid: false,
+            message: "Medicine expiry date is missing."
+        };
+    }
+
+    // Keep database DATE values date-only to avoid timezone shifts.
+    let expiry;
+
+    if (expiryDate instanceof Date) {
+
+        if (Number.isNaN(expiryDate.getTime())) {
+            return {
+                valid: false,
+                message: "Invalid medicine expiry date."
+            };
+        }
+
+        expiry = [
+            expiryDate.getFullYear(),
+            String(expiryDate.getMonth() + 1).padStart(2, "0"),
+            String(expiryDate.getDate()).padStart(2, "0")
+        ].join("-");
+
+    } else {
+
+        expiry = String(expiryDate).trim();
+    }
+
+    // Validate YYYY-MM-DD format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) {
+        return {
+            valid: false,
+            message: "Invalid medicine expiry date."
+        };
+    }
+
+    const [year, month, day] =
+        expiry.split("-").map(Number);
+
+    const parsedDate = new Date(
+        Date.UTC(year, month - 1, day)
+    );
+
+    // Reject impossible dates
+    if (
+        parsedDate.getUTCFullYear() !== year ||
+        parsedDate.getUTCMonth() + 1 !== month ||
+        parsedDate.getUTCDate() !== day
+    ) {
+        return {
+            valid: false,
+            message: "Invalid medicine expiry date."
+        };
+    }
+
+    // Sri Lanka business date (Asia/Colombo)
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Colombo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+
+    // Expiry date is treated as valid until end of that day
+    if (expiry < today) {
+        return {
+            valid: false,
+            message: "Cannot sell expired medicine."
+        };
+    }
+
+    return {
+        valid: true,
+        message: "Medicine is valid for sale."
+    };
+}
+
 
 // =====================================================
 // GET ALL SALES
@@ -104,7 +190,7 @@ router.get(
                 medicine_name,
                 selling_price,
                 quantity,
-                expiry_date
+                DATE_FORMAT(expiry_date, '%Y-%m-%d') AS expiry_date
             FROM medicines
             WHERE quantity > 0
             ORDER BY medicine_name ASC
@@ -300,15 +386,17 @@ router.post(
                 const medicinePlaceholders =
                     medicineIds.map(() => "?").join(",");
 
-                const medicineSql = `
-                    SELECT
-                        medicine_id,
-                        medicine_name,
-                        selling_price,
-                        quantity
-                    FROM medicines
-                    WHERE medicine_id IN (${medicinePlaceholders})
-                `;
+
+        const medicineSql = `
+            SELECT
+                medicine_id,
+                medicine_name,
+                selling_price,
+                quantity,
+                DATE_FORMAT(expiry_date, '%Y-%m-%d') AS expiry_date
+            FROM medicines
+            WHERE medicine_id IN (${medicinePlaceholders})
+        `;
 
 
                 db.query(
@@ -355,6 +443,19 @@ router.post(
 
                             const quantity =
                                 Number(item.quantity);
+
+                    const expiryValidation =
+                        validateMedicineExpiry(medicine.expiry_date);
+
+                    if (!expiryValidation.valid) {
+                        return res.status(400).json({
+                            success: false,
+                            message:
+                                `${medicine.medicine_name}: ${expiryValidation.message}`,
+                            code: "MEDICINE_EXPIRY_ERROR",
+                            medicine_id: medicine.medicine_id
+                        });
+                    }
 
 
                             if (
