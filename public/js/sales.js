@@ -114,6 +114,40 @@ function getMedicineExpiryWarning(expiryDate) {
 
 
 // =====================================================
+// LOAD DISCOUNT OPTIONS
+// =====================================================
+
+async function loadDiscountOptions() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/sales/discounts",
+                {
+                    headers: {
+                        "Authorization":
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error("Unable to load discount options.");
+            return;
+        }
+
+        discountOptions = data;
+
+    } catch (error) {
+        console.error("loadDiscountOptions error:", error);
+    }
+}
+
+
+// =====================================================
 // LOAD MEDICINES
 // =====================================================
 
@@ -355,7 +389,7 @@ function addSaleItem() {
     expiryWarning.hidden = true;
     item.appendChild(expiryWarning);
 
-    const priceDisplay =
+    const discountSelect =
         item.querySelector(
             ".discount-select"
         );
@@ -404,15 +438,13 @@ function addSaleItem() {
                 `Rs. ${sub.toFixed(2)}`;
 
                 const warning =
-                    getMedicineExpiryWarning(medicine.expiry_date);
+                    getMedicineExpiryWarning(med.expiry_date);
                 expiryWarning.textContent =
-                    warning ? `${medicine.medicine_name}: ${warning}` : "";
+                    warning ? `${med.medicine_name}: ${warning}` : "";
                 expiryWarning.hidden = !warning;
 
             } else {
 
-                priceDisplay.textContent =
-                    "Rs. 0.00";
                 expiryWarning.textContent = "";
                 expiryWarning.hidden = true;
             }
@@ -1148,7 +1180,7 @@ async function init() {
 
     loadCustomers();
 
-    loadMedicines();
+    await loadMedicines();
 
     loadSales();
 }
