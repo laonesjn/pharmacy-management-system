@@ -46,7 +46,8 @@ body {
 
 .customer-section select,
 .medicine-select,
-.quantity-input {
+.quantity-input,
+.discount-select {
     height: 44px;
     border: 1px solid #d1d5db;
     border-radius: 7px;
@@ -62,7 +63,8 @@ body {
 
 .customer-section select:focus,
 .medicine-select:focus,
-.quantity-input:focus {
+.quantity-input:focus,
+.discount-select:focus {
     border-color: #2563eb;
     box-shadow:
         0 0 0 3px rgba(37, 99, 235, 0.12);
@@ -97,10 +99,11 @@ body {
     opacity: 1;
 }
 
+/* Sale item row: Medicine | Qty | Discount | Breakdown | Remove */
 .sale-item {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
-    gap: 15px;
+    grid-template-columns: 2fr 80px 1fr 1fr auto;
+    gap: 12px;
     align-items: center;
     margin-bottom: 15px;
     padding: 15px;
@@ -117,9 +120,31 @@ body {
     width: 100%;
 }
 
-.item-price {
-    font-weight: 600;
-    color: #374151;
+.discount-select {
+    width: 100%;
+}
+
+/* Per-item breakdown: gross / discount / subtotal */
+.item-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    min-width: 110px;
+}
+
+.item-breakdown .item-gross {
+    color: #6b7280;
+}
+
+.item-breakdown .item-discount-amt {
+    color: #dc2626;
+    font-size: 12px;
+}
+
+.item-breakdown .item-subtotal {
+    font-weight: 700;
+    color: #111827;
 }
 
 .remove-item-btn {
@@ -137,25 +162,56 @@ body {
     opacity: 1;
 }
 
-.sale-total {
+/* Sale breakdown summary */
+.sale-breakdown {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 20px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
     margin-top: 25px;
     padding-top: 20px;
     border-top: 1px solid #e5e7eb;
 }
 
-.sale-total span {
-    font-size: 16px;
-    font-weight: 600;
-    color: #475569;
+.breakdown-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 24px;
+    min-width: 300px;
 }
 
-.sale-total strong {
-    font-size: 25px;
+.breakdown-row span {
+    font-size: 14px;
+    color: #475569;
+    min-width: 120px;
+    text-align: right;
+}
+
+.breakdown-row strong {
+    font-size: 16px;
     color: #111827;
+    min-width: 120px;
+    text-align: right;
+}
+
+.breakdown-discount strong {
+    color: #dc2626;
+    font-size: 15px;
+}
+
+.breakdown-payable {
+    padding-top: 8px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.breakdown-payable strong {
+    font-size: 22px;
+    color: #111827;
+}
+
+.text-discount {
+    color: #dc2626;
 }
 
 .form-buttons {
@@ -269,6 +325,23 @@ body {
     color: #64748b;
 }
 
+@media (max-width: 950px) {
+
+    .sale-item {
+        grid-template-columns: 1fr 80px 1fr;
+        grid-template-rows: auto auto;
+    }
+
+    .sale-item .item-breakdown {
+        grid-column: 1 / -1;
+    }
+
+    .sale-item .remove-item-btn {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+}
+
 @media (max-width: 850px) {
 
     .sale-item {
@@ -285,8 +358,9 @@ body {
         width: 100%;
     }
 
-    .sale-total {
-        justify-content: space-between;
+    .breakdown-row {
+        min-width: unset;
+        width: 100%;
     }
 }
 

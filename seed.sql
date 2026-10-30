@@ -20,3 +20,11 @@ VALUES
 INSERT INTO customers (customer_name, phone, email, address) VALUES
 ('Jordan Lee', '555-0201', 'jordan.lee@example.com', '7 Oak Avenue'),
 ('Sam Rivera', '555-0202', 'sam.rivera@example.com', '19 Hill Street');
+
+-- CR-003: Baseline approved discount options (created by admin user_id = 1)
+INSERT INTO discount_options (percentage, label, is_active, created_by) VALUES
+(0.00,  'Standard (0%)',        1, 1),
+(5.00,  'Special (5%)',         1, 1),
+(10.00, 'Staff Discount (10%)', 1, 1),
+(15.00, 'Privilege (15%)',      1, 1),
+(20.00, 'VIP (20%)',            1, 1);

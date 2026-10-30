@@ -20,13 +20,42 @@ document.getElementById("welcomeMessage")
     `Welcome, ${user.full_name} (${user.role})`;
 
 
+// Show Discounts menu only to Admin
+if (user.role === "admin") {
+
+    const discountsMenu =
+        document.getElementById("discountsMenu");
+
+    if (discountsMenu) {
+        discountsMenu.style.display = "";
+    }
+}
+
+// Hide Users menu for non-admin
+if (user.role !== "admin") {
+
+    const usersMenu =
+        document.getElementById("usersMenu");
+
+    if (usersMenu) {
+        usersMenu.style.display = "none";
+    }
+}
+
+
 const customerSelect =
     document.getElementById("customerId");
 
 const saleItemsContainer =
     document.getElementById("saleItems");
 
-const totalAmount =
+const grossTotalEl =
+    document.getElementById("grossTotal");
+
+const totalDiscountEl =
+    document.getElementById("totalDiscount");
+
+const totalAmountEl =
     document.getElementById("totalAmount");
 
 const salesTable =
@@ -47,7 +76,57 @@ const clearSaleBtn =
 
 let medicines = [];
 
+let discountOptions = [];
+
 let sales = [];
+
+
+// =====================================================
+// LOAD DISCOUNT OPTIONS
+// =====================================================
+
+async function loadDiscountOptions() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/sales/discounts",
+                {
+                    headers: {
+                        "Authorization":
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            console.error(
+                "Failed to load discounts:",
+                data.message
+            );
+
+            return;
+        }
+
+
+        discountOptions = data;
+
+
+    } catch (error) {
+
+        console.error(
+            "Unable to load discount options:",
+            error
+        );
+    }
+}
 
 
 // =====================================================
@@ -85,6 +164,7 @@ async function loadMedicines() {
         medicines = data;
 
         addSaleItem();
+
 
     } catch (error) {
 
@@ -167,6 +247,37 @@ async function loadCustomers() {
 
 
 // =====================================================
+// BUILD DISCOUNT DROPDOWN OPTIONS HTML
+// =====================================================
+
+function buildDiscountOptions() {
+
+    if (discountOptions.length === 0) {
+        return `<option value="0.00">No Discount (0%)</option>`;
+    }
+
+    return discountOptions.map(d => {
+
+        const pct =
+            parseFloat(d.percentage).toFixed(2);
+
+        const selected =
+            pct === "0.00" ? "selected" : "";
+
+        return `
+            <option
+                value="${pct}"
+                ${selected}
+            >
+                ${d.label}
+            </option>
+        `;
+
+    }).join("");
+}
+
+
+// =====================================================
 // ADD SALE ITEM
 // =====================================================
 
@@ -221,9 +332,16 @@ function addSaleItem() {
         >
 
 
-        <span class="item-price">
-            Rs. 0.00
-        </span>
+        <select class="discount-select">
+            ${buildDiscountOptions()}
+        </select>
+
+
+        <div class="item-breakdown">
+            <span class="item-gross">Rs. 0.00</span>
+            <span class="item-discount-amt text-discount">- Rs. 0.00</span>
+            <span class="item-subtotal">Rs. 0.00</span>
+        </div>
 
 
         <button
@@ -246,46 +364,83 @@ function addSaleItem() {
             ".quantity-input"
         );
 
-    const priceDisplay =
+    const discountSelect =
         item.querySelector(
-            ".item-price"
+            ".discount-select"
         );
+
+
+    function updateItemBreakdown() {
+
+        const med =
+            medicines.find(
+                m =>
+                    Number(m.medicine_id) ===
+                    Number(medicineSelect.value)
+            );
+
+        const qty =
+            Number(quantityInput.value) || 0;
+
+        const pct =
+            parseFloat(discountSelect.value) || 0;
+
+
+        if (med && qty > 0) {
+
+            const price =
+                parseFloat(med.selling_price);
+
+            const gross =
+                price * qty;
+
+            const discAmt =
+                Math.round(gross * pct / 100 * 100) / 100;
+
+            const sub =
+                Math.round((gross - discAmt) * 100) / 100;
+
+            item.querySelector(".item-gross")
+                .textContent =
+                `Rs. ${gross.toFixed(2)}`;
+
+            item.querySelector(".item-discount-amt")
+                .textContent =
+                `- Rs. ${discAmt.toFixed(2)}`;
+
+            item.querySelector(".item-subtotal")
+                .textContent =
+                `Rs. ${sub.toFixed(2)}`;
+
+        } else {
+
+            item.querySelector(".item-gross")
+                .textContent = "Rs. 0.00";
+
+            item.querySelector(".item-discount-amt")
+                .textContent = "- Rs. 0.00";
+
+            item.querySelector(".item-subtotal")
+                .textContent = "Rs. 0.00";
+        }
+
+        calculateTotal();
+    }
 
 
     medicineSelect.addEventListener(
         "change",
-        function() {
-
-            const medicine =
-                medicines.find(
-                    m =>
-                        Number(m.medicine_id) ===
-                        Number(this.value)
-                );
-
-
-            if (medicine) {
-
-                priceDisplay.textContent =
-                    `Rs. ${Number(
-                        medicine.selling_price
-                    ).toFixed(2)}`;
-
-            } else {
-
-                priceDisplay.textContent =
-                    "Rs. 0.00";
-            }
-
-
-            calculateTotal();
-        }
+        updateItemBreakdown
     );
-
 
     quantityInput.addEventListener(
         "input",
-        calculateTotal
+        updateItemBreakdown
+    );
+
+    discountSelect.addEventListener(
+        "change",
+        updateItemBreakdown
     );
 
 
@@ -312,12 +467,13 @@ function addSaleItem() {
 
 
 // =====================================================
-// CALCULATE TOTAL
+// CALCULATE TOTALS
 // =====================================================
 
 function calculateTotal() {
 
-    let total = 0;
+    let grossTotal = 0;
+    let discountTotal = 0;
 
 
     const items =
@@ -342,6 +498,14 @@ function calculateTotal() {
             );
 
 
+        const pct =
+            parseFloat(
+                item.querySelector(
+                    ".discount-select"
+                ).value
+            ) || 0;
+
+
         const medicine =
             medicines.find(
                 m =>
@@ -355,16 +519,36 @@ function calculateTotal() {
             quantity > 0
         ) {
 
-            total +=
-                Number(
-                    medicine.selling_price
-                ) * quantity;
+            const price =
+                parseFloat(medicine.selling_price);
+
+            const gross =
+                price * quantity;
+
+            const discAmt =
+                Math.round(gross * pct / 100 * 100) / 100;
+
+            grossTotal += gross;
+            discountTotal += discAmt;
         }
     });
 
 
-    totalAmount.textContent =
-        `Rs. ${total.toFixed(2)}`;
+    const finalPayable =
+        Math.round(
+            (grossTotal - discountTotal) *
+            100
+        ) / 100;
+
+
+    grossTotalEl.textContent =
+        `Rs. ${grossTotal.toFixed(2)}`;
+
+    totalDiscountEl.textContent =
+        `- Rs. ${discountTotal.toFixed(2)}`;
+
+    totalAmountEl.textContent =
+        `Rs. ${finalPayable.toFixed(2)}`;
 }
 
 
@@ -416,6 +600,12 @@ completeSaleBtn.addEventListener(
                         ".quantity-input"
                     ).value
                 );
+
+
+            const discountPct =
+                itemElement.querySelector(
+                    ".discount-select"
+                ).value;
 
 
             if (!medicineId) {
@@ -486,7 +676,11 @@ completeSaleBtn.addEventListener(
                     Number(medicineId),
 
                 quantity:
-                    quantity
+                    quantity,
+
+                // Send discount percentage so server can validate
+                discount_percentage:
+                    parseFloat(discountPct)
             });
         }
 
@@ -545,7 +739,10 @@ completeSaleBtn.addEventListener(
 
 
             alert(
-                `${data.message}\nTotal: Rs. ${data.total_amount}`
+                `${data.message}\n` +
+                `Gross Total: Rs. ${data.gross_total}\n` +
+                `Discount:    Rs. ${data.total_discount}\n` +
+                `Final Total: Rs. ${data.total_amount}`
             );
 
 
@@ -578,8 +775,9 @@ function clearSale() {
 
     saleItemsContainer.innerHTML = "";
 
-    totalAmount.textContent =
-        "Rs. 0.00";
+    grossTotalEl.textContent = "Rs. 0.00";
+    totalDiscountEl.textContent = "- Rs. 0.00";
+    totalAmountEl.textContent = "Rs. 0.00";
 
     if (medicines.length > 0) {
 
@@ -783,21 +981,48 @@ async function viewSale(id) {
             "Items:\n";
 
 
+        let grossTotal = 0;
+        let totalDiscount = 0;
+
         data.items.forEach(item => {
 
+            const gross =
+                Number(item.selling_price) *
+                Number(item.quantity);
+
+            const discAmt =
+                Number(item.discount_amount);
+
+            const sub =
+                Number(item.subtotal);
+
+            grossTotal += gross;
+            totalDiscount += discAmt;
+
+            const pct =
+                Number(item.discount_percentage);
+
             message +=
-                `${item.medicine_name} x ${
+                `  ${item.medicine_name} x ${
                     item.quantity
-                } = Rs. ${
-                    Number(
-                        item.subtotal
-                    ).toFixed(2)
-                }\n`;
+                } @ Rs.${
+                    Number(item.selling_price).toFixed(2)
+                }` +
+                (pct > 0
+                    ? ` (${pct.toFixed(2)}% off - Rs.${discAmt.toFixed(2)})`
+                    : "") +
+                ` = Rs. ${sub.toFixed(2)}\n`;
         });
 
 
         message +=
-            `\nTotal: Rs. ${
+            `\nGross Total:     Rs. ${grossTotal.toFixed(2)}`;
+
+        message +=
+            `\nTotal Discount:  Rs. ${totalDiscount.toFixed(2)}`;
+
+        message +=
+            `\nFinal Payable:   Rs. ${
                 Number(
                     data.sale.total_amount
                 ).toFixed(2)
@@ -903,8 +1128,15 @@ document.getElementById(
 // START
 // =====================================================
 
-loadCustomers();
+async function init() {
 
-loadMedicines();
+    await loadDiscountOptions();
 
-loadSales();
+    loadCustomers();
+
+    loadMedicines();
+
+    loadSales();
+}
+
+init();

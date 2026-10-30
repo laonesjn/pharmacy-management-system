@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Discount Management - Pharmacy Management System
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/dashboard.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/css/discounts.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+    <h2>
+        Pharmacy Management System
+    </h2>
+
+    <div>
+
+        <span id="userName"></span>
+
+        <button id="logoutBtn">
+            Logout
+        </button>
+
+    </div>
+
+</header>
+
+
+<aside class="sidebar">
+
+    <a href="/pages/dashboard.html">
+        Dashboard
+    </a>
+
+    <a href="/pages/medicines.html">
+        Medicines
+    </a>
+
+    <a href="/pages/categories.html">
+        Categories
+    </a>
+
+    <a href="/pages/suppliers.html">
+        Suppliers
+    </a>
+
+    <a href="/pages/stock.html">
+        Stock
+    </a>
+
+    <a href="/pages/expiry.html">
+        Expiry Monitoring
+    </a>
+
+    <a href="/pages/sales.html">
+        Sales
+    </a>
+
+    <a
+        href="/pages/users.html"
+        id="usersMenu"
+    >
+        Users
+    </a>
+
+    <a
+        href="/pages/admin/discounts.html"
+        id="discountsMenu"
+    >
+        Discounts
+    </a>
+
+</aside>
+
+
+<main class="content">
+
+    <h1>
+        Discount Management
+    </h1>
+
+    <p id="welcomeMessage"></p>
+
+
+    <!-- =============================================
+         ADD DISCOUNT FORM
+         ============================================= -->
+
+    <section class="discount-form">
+
+        <h2>
+            Add Discount Option
+        </h2>
+
+        <p class="form-note">
+            Only Admin users may add or manage discount options.
+            Pharmacists and Pharmacy Staff can only select discounts from the Sales page.
+        </p>
+
+
+        <div class="form-row">
+
+            <div class="field-group">
+
+                <label for="discountPercentage">
+                    Percentage (0.00 – 100.00)
+                </label>
+
+                <input
+                    type="number"
+                    id="discountPercentage"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="e.g. 10"
+                >
+
+            </div>
+
+            <div class="field-group">
+
+                <label for="discountLabel">
+                    Label
+                </label>
+
+                <input
+                    type="text"
+                    id="discountLabel"
+                    maxlength="50"
+                    placeholder="e.g. Staff Discount (10%)"
+                >
+
+            </div>
+
+            <div class="field-group field-group--btn">
+
+                <button
+                    type="button"
+                    id="addDiscountBtn"
+                >
+                    Add Discount
+                </button>
+
+            </div>
+
+        </div>
+
+        <p
+            id="formMessage"
+            class="form-message"
+        ></p>
+
+    </section>
+
+
+    <!-- =============================================
+         DISCOUNT OPTIONS TABLE
+         ============================================= -->
+
+    <section class="discount-list">
+
+        <div class="list-header">
+
+            <h2>
+                Approved Discount Options
+            </h2>
+
+        </div>
+
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>ID</th>
+
+                    <th>Percentage</th>
+
+                    <th>Label</th>
+
+                    <th>Status</th>
+
+                    <th>Created By</th>
+
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="discountsTable"></tbody>
+
+        </table>
+
+    </section>
+
+</main>
+
+
+<script src="/js/admin/discounts.js"></script>
+
+</body>
+
+</html>
+

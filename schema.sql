@@ -100,12 +100,15 @@ CREATE TABLE sales (
         REFERENCES users(user_id)
 );
 
+-- CR-003: snapshot fields added – discount_percentage, discount_amount
 CREATE TABLE sale_items (
     sale_item_id INT AUTO_INCREMENT PRIMARY KEY,
     sale_id INT NOT NULL,
     medicine_id INT NOT NULL,
     quantity INT NOT NULL,
     selling_price DECIMAL(10,2) NOT NULL,
+    discount_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     subtotal DECIMAL(10,2) NOT NULL,
 
     FOREIGN KEY (sale_id)
@@ -116,3 +119,16 @@ CREATE TABLE sale_items (
         REFERENCES medicines(medicine_id)
 );
 
+-- CR-003: Admin-controlled approved discount options
+CREATE TABLE discount_options (
+    discount_id INT AUTO_INCREMENT PRIMARY KEY,
+    percentage DECIMAL(5,2) NOT NULL UNIQUE,
+    label VARCHAR(50) NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (created_by)
+        REFERENCES users(user_id)
+);
