@@ -404,19 +404,23 @@ function addSaleItem() {
                 `Rs. ${sub.toFixed(2)}`;
 
                 const warning =
-                    getMedicineExpiryWarning(medicine.expiry_date);
+                    getMedicineExpiryWarning(med.expiry_date);
                 expiryWarning.textContent =
-                    warning ? `${medicine.medicine_name}: ${warning}` : "";
+                    warning ? `${med.medicine_name}: ${warning}` : "";
                 expiryWarning.hidden = !warning;
 
             } else {
 
-                priceDisplay.textContent =
-                    "Rs. 0.00";
                 expiryWarning.textContent = "";
                 expiryWarning.hidden = true;
             }
 
+        calculateTotal();
+    }
+
+
+    medicineSelect.addEventListener(
+        "change",
         calculateTotal();
     }
 
@@ -1148,7 +1152,7 @@ async function init() {
 
     loadCustomers();
 
-    loadMedicines();
+    await loadMedicines();
 
     loadSales();
 }

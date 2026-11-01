@@ -323,6 +323,33 @@ function applyFilters() {
 
 
 // =====================================================
+// POPULATE FORM DROPDOWNS
+// =====================================================
+
+async function populateFormDropdowns() {
+
+    const [catRes, supRes] = await Promise.all([
+        fetch("/api/categories", { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch("/api/suppliers", { headers: { "Authorization": `Bearer ${token}` } })
+    ]);
+
+    const categories = catRes.ok ? await catRes.json() : [];
+    const suppliers = supRes.ok ? await supRes.json() : [];
+
+    const categorySelect = document.getElementById("categoryId");
+    const supplierSelect = document.getElementById("supplierId");
+
+    categories.forEach(c => {
+        categorySelect.add(new Option(`${c.category_name} (ID: ${c.category_id})`, c.category_id));
+    });
+
+    suppliers.forEach(s => {
+        supplierSelect.add(new Option(`${s.supplier_name} (ID: ${s.supplier_id})`, s.supplier_id));
+    });
+}
+
+
+// =====================================================
 // LOAD MEDICINES
 // =====================================================
 
@@ -841,5 +868,6 @@ document.getElementById("logoutBtn").addEventListener(
 // =====================================================
 
 if (token && user) {
+    populateFormDropdowns();
     loadMedicines();
 }
