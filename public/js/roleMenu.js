@@ -18,7 +18,7 @@ if (!token || !user) {
     Role-based menu access
 
     admin:
-        All menus
+        All menus (including Discounts)
 
     pharmacist:
         Dashboard
@@ -84,6 +84,12 @@ const salesMenu =
     );
 
 
+const discountsMenu =
+    document.getElementById(
+        "discountsMenu"
+    );
+
+
 
 /* =========================
    ADMIN
@@ -91,7 +97,10 @@ const salesMenu =
 
 if (role === "admin") {
 
-    // Admin can access everything.
+    // Admin can access everything – show Discounts menu.
+    if (discountsMenu) {
+        discountsMenu.style.display = "";
+    }
 
 }
 
@@ -108,6 +117,11 @@ else if (role === "pharmacist") {
         usersMenu.style.display =
             "none";
 
+    }
+
+    // Discounts menu hidden for pharmacist
+    if (discountsMenu) {
+        discountsMenu.style.display = "none";
     }
 
 }
@@ -141,6 +155,11 @@ else if (role === "staff") {
         suppliersMenu.style.display =
             "none";
 
+    }
+
+    // Discounts menu hidden for staff
+    if (discountsMenu) {
+        discountsMenu.style.display = "none";
     }
 
 }

@@ -1,0 +1,250 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.content h1 {
+    font-size: 30px;
+    color: #111827;
+    margin-bottom: 8px;
+}
+
+#welcomeMessage {
+    color: #64748b;
+    font-size: 15px;
+}
+
+/* =============================================
+   FORM SECTION
+   ============================================= */
+
+.discount-form,
+.discount-list {
+    background: #ffffff;
+    padding: 28px;
+    margin-top: 25px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.discount-form h2,
+.discount-list h2 {
+    color: #1e293b;
+    font-size: 21px;
+    margin-bottom: 14px;
+}
+
+.form-note {
+    color: #64748b;
+    font-size: 13px;
+    margin-bottom: 22px;
+    padding: 10px 14px;
+    background: #f1f5f9;
+    border-left: 3px solid #2563eb;
+    border-radius: 4px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 160px;
+}
+
+.field-group--btn {
+    flex: 0 0 auto;
+    min-width: unset;
+}
+
+.field-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.field-group input[type="number"],
+.field-group input[type="text"] {
+    height: 44px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    padding: 0 12px;
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+}
+
+.field-group input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+#addDiscountBtn {
+    height: 44px;
+    padding: 0 22px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#addDiscountBtn:hover {
+    background: #1d4ed8;
+}
+
+/* Message */
+.form-message {
+    margin-top: 12px;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+.msg-success {
+    color: #15803d;
+    font-weight: 600;
+}
+
+.msg-error {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* =============================================
+   TABLE SECTION
+   ============================================= */
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.discount-list {
+    overflow-x: auto;
+}
+
+.discount-list table {
+    width: 100%;
+    min-width: 700px;
+    margin-top: 18px;
+    border-collapse: collapse;
+    border: 1px solid #e5e7eb;
+}
+
+.discount-list th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.discount-list td {
+    padding: 14px;
+    color: #374151;
+    font-size: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.discount-list tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Status badge */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-inactive {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+/* Action buttons */
+.deactivate-btn,
+.activate-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.deactivate-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.deactivate-btn:hover {
+    background: #fecaca;
+}
+
+.activate-btn {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.activate-btn:hover {
+    background: #bbf7d0;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 30px;
+    color: #64748b;
+}
+
+@media (max-width: 700px) {
+
+    .content {
+        margin-left: 0;
+        padding: 20px;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .field-group--btn {
+        width: 100%;
+    }
+
+    #addDiscountBtn {
+        width: 100%;
+    }
+
+    .discount-form,
+    .discount-list {
+        padding: 20px;
+    }
+}
+

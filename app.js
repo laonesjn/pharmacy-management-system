@@ -37,6 +37,8 @@ const userRoutes =
 
 const expiryRoutes =
     require("./routes/expiry");
+const adminDiscountRoutes =
+    require("./routes/admin/discounts");
 
 
 const errorHandler =
@@ -122,6 +124,11 @@ app.use(
 app.use(
     "/api/expiry",
     expiryRoutes
+);
+
+app.use(
+    "/api/admin/discounts",
+    adminDiscountRoutes
 );
 
 

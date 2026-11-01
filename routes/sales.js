@@ -139,6 +139,43 @@ router.get(
 
 
 // =====================================================
+// GET ACTIVE DISCOUNT OPTIONS FOR SALES DROPDOWN
+// Admin, Pharmacist, Pharmacy Staff
+// =====================================================
+
+router.get(
+    "/discounts",
+    authenticateToken,
+    authorizeRoles("admin", "pharmacist", "staff"),
+    (req, res) => {
+
+        const sql = `
+            SELECT
+                discount_id,
+                percentage,
+                label
+            FROM discount_options
+            WHERE is_active = 1
+            ORDER BY percentage ASC
+        `;
+
+        db.query(sql, (error, results) => {
+
+            if (error) {
+                console.error(error);
+
+                return res.status(500).json({
+                    message: "Unable to load discount options."
+                });
+            }
+
+            res.json(results);
+        });
+    }
+);
+
+
+// =====================================================
 // GET MEDICINES FOR SALE
 // =====================================================
 
@@ -210,7 +247,7 @@ router.get(
 
 
 // =====================================================
-// CREATE SALE
+// CREATE SALE  (with server-side price + discount validation)
 // =====================================================
 
 router.post(
@@ -230,7 +267,6 @@ router.post(
             !Array.isArray(items) ||
             items.length === 0
         ) {
-
             return res.status(400).json({
                 message:
                     "At least one medicine is required."
@@ -251,7 +287,6 @@ router.post(
             uniqueMedicineIds.size !==
             medicineIds.length
         ) {
-
             return res.status(400).json({
                 message:
                     "The same medicine cannot be added twice."
@@ -259,7 +294,7 @@ router.post(
         }
 
 
-        // Validate quantities
+        // Validate quantities and discount percentages per item
         for (const item of items) {
 
             if (
@@ -269,17 +304,87 @@ router.post(
                 ) ||
                 Number(item.quantity) <= 0
             ) {
-
                 return res.status(400).json({
                     message:
                         "Each medicine must have a valid quantity."
                 });
             }
+
+            const pct = parseFloat(item.discount_percentage);
+
+            if (
+                isNaN(pct) ||
+                pct < 0 ||
+                pct > 100
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Discount percentage must be between 0.00 and 100.00."
+                });
+            }
         }
 
 
-        const medicinePlaceholders =
-            medicineIds.map(() => "?").join(",");
+        // Collect unique discount percentages submitted
+        const submittedPercentages = [
+            ...new Set(
+                items.map(i =>
+                    parseFloat(i.discount_percentage).toFixed(2)
+                )
+            )
+        ];
+
+
+        // Fetch active approved discount options for whitelist validation
+        const discountPlaceholders =
+            submittedPercentages.map(() => "?").join(",");
+
+        const discountSql = `
+            SELECT percentage
+            FROM discount_options
+            WHERE is_active = 1
+              AND CAST(percentage AS CHAR) IN (${discountPlaceholders})
+        `;
+
+
+        db.query(
+            discountSql,
+            submittedPercentages,
+            (discountError, approvedDiscounts) => {
+
+                if (discountError) {
+                    console.error(discountError);
+
+                    return res.status(500).json({
+                        message: "Database error validating discounts."
+                    });
+                }
+
+
+                // Build a set of approved percentages (as strings to 2dp)
+                const approvedSet = new Set(
+                    approvedDiscounts.map(d =>
+                        parseFloat(d.percentage).toFixed(2)
+                    )
+                );
+
+
+                // Verify every submitted percentage is in the approved set
+                for (const pctStr of submittedPercentages) {
+
+                    if (!approvedSet.has(pctStr)) {
+
+                        return res.status(400).json({
+                            message:
+                                `Discount ${pctStr}% is not an approved active discount option.`
+                        });
+                    }
+                }
+
+
+                // Fetch authoritative medicine prices from DB
+                const medicinePlaceholders =
+                    medicineIds.map(() => "?").join(",");
 
 
         const medicineSql = `
@@ -294,49 +399,50 @@ router.post(
         `;
 
 
-        db.query(
-            medicineSql,
-            medicineIds,
-            (error, medicines) => {
+                db.query(
+                    medicineSql,
+                    medicineIds,
+                    (error, medicines) => {
 
-                if (error) {
-                    console.error(error);
+                        if (error) {
+                            console.error(error);
 
-                    return res.status(500).json({
-                        message: "Database error."
-                    });
-                }
-
-
-                if (
-                    medicines.length !==
-                    medicineIds.length
-                ) {
-
-                    return res.status(400).json({
-                        message:
-                            "One or more medicines were not found."
-                    });
-                }
+                            return res.status(500).json({
+                                message: "Database error."
+                            });
+                        }
 
 
-                let totalAmount = 0;
-
-                const saleItems = [];
-
-
-                for (const item of items) {
-
-                    const medicine =
-                        medicines.find(
-                            m =>
-                                Number(m.medicine_id) ===
-                                Number(item.medicine_id)
-                        );
+                        if (
+                            medicines.length !==
+                            medicineIds.length
+                        ) {
+                            return res.status(400).json({
+                                message:
+                                    "One or more medicines were not found."
+                            });
+                        }
 
 
-                    const quantity =
-                        Number(item.quantity);
+                        // Build sale items with server-calculated values
+                        let grossSaleTotal = 0;
+                        let totalDiscount = 0;
+
+                        const saleItems = [];
+
+
+                        for (const item of items) {
+
+                            const medicine =
+                                medicines.find(
+                                    m =>
+                                        Number(m.medicine_id) ===
+                                        Number(item.medicine_id)
+                                );
+
+
+                            const quantity =
+                                Number(item.quantity);
 
                     const expiryValidation =
                         validateMedicineExpiry(medicine.expiry_date);
@@ -352,256 +458,291 @@ router.post(
                     }
 
 
-                    if (
-                        quantity >
-                        Number(medicine.quantity)
-                    ) {
-
-                        return res.status(400).json({
-                            message:
-                                `Insufficient stock for ${medicine.medicine_name}. Available quantity: ${medicine.quantity}.`
-                        });
-                    }
-
-
-                    const sellingPrice =
-                        Number(
-                            medicine.selling_price
-                        );
+                            if (
+                                quantity >
+                                Number(medicine.quantity)
+                            ) {
+                                return res.status(400).json({
+                                    message:
+                                        `Insufficient stock for ${medicine.medicine_name}. Available quantity: ${medicine.quantity}.`
+                                });
+                            }
 
 
-                    const subtotal =
-                        sellingPrice *
-                        quantity;
+                            // Use DB price – never trust client
+                            const sellingPrice =
+                                parseFloat(medicine.selling_price);
+
+                            const discountPercentage =
+                                parseFloat(item.discount_percentage);
+
+                            const grossTotal =
+                                sellingPrice * quantity;
+
+                            const discountAmount =
+                                Math.round(
+                                    grossTotal *
+                                    discountPercentage /
+                                    100 *
+                                    100
+                                ) / 100;
+
+                            const subtotal =
+                                Math.round(
+                                    (grossTotal - discountAmount) *
+                                    100
+                                ) / 100;
 
 
-                    totalAmount += subtotal;
+                            grossSaleTotal += grossTotal;
+                            totalDiscount += discountAmount;
 
 
-                    saleItems.push({
-                        medicine_id:
-                            medicine.medicine_id,
+                            saleItems.push({
+                                medicine_id:
+                                    medicine.medicine_id,
 
-                        quantity:
-                            quantity,
+                                quantity:
+                                    quantity,
 
-                        selling_price:
-                            sellingPrice,
+                                selling_price:
+                                    sellingPrice,
 
-                        subtotal:
-                            subtotal
-                    });
-                }
+                                discount_percentage:
+                                    discountPercentage,
 
+                                discount_amount:
+                                    discountAmount,
 
-                db.beginTransaction(
-                    transactionError => {
-
-                        if (transactionError) {
-
-                            console.error(
-                                transactionError
-                            );
-
-                            return res.status(500).json({
-                                message:
-                                    "Unable to start sale transaction."
+                                subtotal:
+                                    subtotal
                             });
                         }
 
 
-                        const saleSql = `
-                            INSERT INTO sales
-                            (
-                                customer_id,
-                                sold_by,
-                                total_amount
-                            )
-                            VALUES (?, ?, ?)
-                        `;
+                        const finalPayable =
+                            Math.round(
+                                (grossSaleTotal - totalDiscount) *
+                                100
+                            ) / 100;
 
 
-                        db.query(
-                            saleSql,
-                            [
-                                customer_id || null,
-                                req.user.user_id,
-                                totalAmount
-                            ],
-                            (saleError, saleResult) => {
+                        db.beginTransaction(
+                            transactionError => {
 
-                                if (saleError) {
+                                if (transactionError) {
 
-                                    return db.rollback(
-                                        () => {
-
-                                            console.error(
-                                                saleError
-                                            );
-
-                                            res.status(500).json({
-                                                message:
-                                                    "Failed to create sale."
-                                            });
-                                        }
+                                    console.error(
+                                        transactionError
                                     );
+
+                                    return res.status(500).json({
+                                        message:
+                                            "Unable to start sale transaction."
+                                    });
                                 }
 
 
-                                const saleId =
-                                    saleResult.insertId;
-
-
-                                const itemSql = `
-                                    INSERT INTO sale_items
+                                const saleSql = `
+                                    INSERT INTO sales
                                     (
-                                        sale_id,
-                                        medicine_id,
-                                        quantity,
-                                        selling_price,
-                                        subtotal
+                                        customer_id,
+                                        sold_by,
+                                        total_amount
                                     )
-                                    VALUES ?
+                                    VALUES (?, ?, ?)
                                 `;
 
 
-                                const itemValues =
-                                    saleItems.map(item => [
-                                        saleId,
-                                        item.medicine_id,
-                                        item.quantity,
-                                        item.selling_price,
-                                        item.subtotal
-                                    ]);
-
-
                                 db.query(
-                                    itemSql,
-                                    [itemValues],
-                                    (itemError) => {
+                                    saleSql,
+                                    [
+                                        customer_id || null,
+                                        req.user.user_id,
+                                        finalPayable
+                                    ],
+                                    (saleError, saleResult) => {
 
-                                        if (itemError) {
+                                        if (saleError) {
 
                                             return db.rollback(
                                                 () => {
 
                                                     console.error(
-                                                        itemError
+                                                        saleError
                                                     );
 
                                                     res.status(500).json({
                                                         message:
-                                                            "Failed to save sale items."
+                                                            "Failed to create sale."
                                                     });
                                                 }
                                             );
                                         }
 
 
-                                        // Update stock
-                                        let completed =
-                                            0;
+                                        const saleId =
+                                            saleResult.insertId;
 
 
-                                        let stockError =
-                                            null;
+                                        const itemSql = `
+                                            INSERT INTO sale_items
+                                            (
+                                                sale_id,
+                                                medicine_id,
+                                                quantity,
+                                                selling_price,
+                                                discount_percentage,
+                                                discount_amount,
+                                                subtotal
+                                            )
+                                            VALUES ?
+                                        `;
 
 
-                                        saleItems.forEach(
-                                            item => {
+                                        const itemValues =
+                                            saleItems.map(item => [
+                                                saleId,
+                                                item.medicine_id,
+                                                item.quantity,
+                                                item.selling_price,
+                                                item.discount_percentage,
+                                                item.discount_amount,
+                                                item.subtotal
+                                            ]);
 
-                                                const stockSql = `
-                                                    UPDATE medicines
-                                                    SET quantity =
-                                                        quantity - ?
-                                                    WHERE medicine_id = ?
-                                                `;
 
+                                        db.query(
+                                            itemSql,
+                                            [itemValues],
+                                            (itemError) => {
 
-                                                db.query(
-                                                    stockSql,
-                                                    [
-                                                        item.quantity,
-                                                        item.medicine_id
-                                                    ],
-                                                    (
-                                                        error
-                                                    ) => {
+                                                if (itemError) {
 
-                                                        if (
-                                                            error &&
-                                                            !stockError
-                                                        ) {
+                                                    return db.rollback(
+                                                        () => {
 
-                                                            stockError =
-                                                                error;
+                                                            console.error(
+                                                                itemError
+                                                            );
+
+                                                            res.status(500).json({
+                                                                message:
+                                                                    "Failed to save sale items."
+                                                            });
                                                         }
+                                                    );
+                                                }
 
 
-                                                        completed++;
+                                                // Update stock
+                                                let completed = 0;
+
+                                                let stockError = null;
 
 
-                                                        if (
-                                                            completed ===
-                                                            saleItems.length
-                                                        ) {
+                                                saleItems.forEach(
+                                                    item => {
 
-                                                            if (
-                                                                stockError
-                                                            ) {
-
-                                                                return db.rollback(
-                                                                    () => {
-
-                                                                        console.error(
-                                                                            stockError
-                                                                        );
-
-                                                                        res.status(500).json({
-                                                                            message:
-                                                                                "Failed to update stock."
-                                                                        });
-                                                                    }
-                                                                );
-                                                            }
+                                                        const stockSql = `
+                                                            UPDATE medicines
+                                                            SET quantity =
+                                                                quantity - ?
+                                                            WHERE medicine_id = ?
+                                                        `;
 
 
-                                                            db.commit(
-                                                                commitError => {
+                                                        db.query(
+                                                            stockSql,
+                                                            [
+                                                                item.quantity,
+                                                                item.medicine_id
+                                                            ],
+                                                            (
+                                                                error
+                                                            ) => {
+
+                                                                if (
+                                                                    error &&
+                                                                    !stockError
+                                                                ) {
+                                                                    stockError =
+                                                                        error;
+                                                                }
+
+
+                                                                completed++;
+
+
+                                                                if (
+                                                                    completed ===
+                                                                    saleItems.length
+                                                                ) {
 
                                                                     if (
-                                                                        commitError
+                                                                        stockError
                                                                     ) {
 
                                                                         return db.rollback(
                                                                             () => {
 
                                                                                 console.error(
-                                                                                    commitError
+                                                                                    stockError
                                                                                 );
 
                                                                                 res.status(500).json({
                                                                                     message:
-                                                                                        "Failed to complete sale."
+                                                                                        "Failed to update stock."
                                                                                 });
                                                                             }
                                                                         );
                                                                     }
 
 
-                                                                    res.status(201).json({
-                                                                        message:
-                                                                            "Sale completed successfully.",
+                                                                    db.commit(
+                                                                        commitError => {
 
-                                                                        sale_id:
-                                                                            saleId,
+                                                                            if (
+                                                                                commitError
+                                                                            ) {
 
-                                                                        total_amount:
-                                                                            totalAmount.toFixed(2)
-                                                                    });
+                                                                                return db.rollback(
+                                                                                    () => {
+
+                                                                                        console.error(
+                                                                                            commitError
+                                                                                        );
+
+                                                                                        res.status(500).json({
+                                                                                            message:
+                                                                                                "Failed to complete sale."
+                                                                                        });
+                                                                                    }
+                                                                                );
+                                                                            }
+
+
+                                                                            res.status(201).json({
+                                                                                message:
+                                                                                    "Sale completed successfully.",
+
+                                                                                sale_id:
+                                                                                    saleId,
+
+                                                                                gross_total:
+                                                                                    grossSaleTotal.toFixed(2),
+
+                                                                                total_discount:
+                                                                                    totalDiscount.toFixed(2),
+
+                                                                                total_amount:
+                                                                                    finalPayable.toFixed(2)
+                                                                            });
+                                                                        }
+                                                                    );
                                                                 }
-                                                            );
-                                                        }
+                                                            }
+                                                        );
                                                     }
                                                 );
                                             }
@@ -684,6 +825,8 @@ router.get(
                         m.medicine_name,
                         si.quantity,
                         si.selling_price,
+                        si.discount_percentage,
+                        si.discount_amount,
                         si.subtotal
                     FROM sale_items si
                     INNER JOIN medicines m

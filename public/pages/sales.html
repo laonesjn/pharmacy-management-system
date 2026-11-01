@@ -86,6 +86,14 @@
             Users
         </a>
 
+        <a
+            href="/pages/admin/discounts.html"
+            id="discountsMenu"
+            style="display:none"
+        >
+            Discounts
+        </a>
+
 </aside>
 
 
@@ -150,15 +158,23 @@
         </div>
 
 
-        <div class="sale-total">
+        <!-- Breakdown totals -->
+        <div class="sale-breakdown">
 
-            <span>
-                Total Amount
-            </span>
+            <div class="breakdown-row">
+                <span>Gross Total</span>
+                <strong id="grossTotal">Rs. 0.00</strong>
+            </div>
 
-            <strong id="totalAmount">
-                0.00
-            </strong>
+            <div class="breakdown-row breakdown-discount">
+                <span>Total Discount</span>
+                <strong id="totalDiscount">- Rs. 0.00</strong>
+            </div>
+
+            <div class="breakdown-row breakdown-payable">
+                <span>Final Payable</span>
+                <strong id="totalAmount">Rs. 0.00</strong>
+            </div>
 
         </div>
 
