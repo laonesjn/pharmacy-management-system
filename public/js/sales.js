@@ -85,10 +85,15 @@ function getMedicineExpiryWarning(expiryDate) {
         return "Medicine expiry date is missing.";
     }
 
-    const expiry = String(expiryDate).trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) {
+    // A SQL DATE can be serialized by a driver as an ISO timestamp. Keep
+    // the calendar date portion so timezone conversion cannot change expiry.
+    const rawExpiry = String(expiryDate).trim();
+    const dateMatch = rawExpiry.match(/^(\d{4}-\d{2}-\d{2})(?:T.*)?$/);
+    if (!dateMatch) {
         return "Invalid medicine expiry date.";
     }
+
+    const expiry = dateMatch[1];
 
     const [year, month, day] = expiry.split("-").map(Number);
     const parsedDate = new Date(Date.UTC(year, month - 1, day));

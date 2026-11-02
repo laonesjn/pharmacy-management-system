@@ -43,7 +43,19 @@ function validateMedicineExpiry(expiryDate) {
 
     } else {
 
-        expiry = String(expiryDate).trim();
+        // Some MySQL drivers serialize DATE values as ISO timestamps.
+        // Use the date portion without converting through local time.
+        const rawExpiry = String(expiryDate).trim();
+        const dateMatch = rawExpiry.match(/^(\d{4}-\d{2}-\d{2})(?:T.*)?$/);
+
+        if (!dateMatch) {
+            return {
+                valid: false,
+                message: "Invalid medicine expiry date."
+            };
+        }
+
+        expiry = dateMatch[1];
     }
 
     // Validate YYYY-MM-DD format
