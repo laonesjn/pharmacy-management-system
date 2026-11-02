@@ -1,4 +1,5 @@
 
+(function applyRoleBasedMenus() {
 const token =
     localStorage.getItem("token");
 
@@ -180,3 +181,5 @@ else {
         "/pages/login.html";
 
 }
+
+})();

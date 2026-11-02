@@ -123,6 +123,27 @@ body {
     border-radius: 10px;
 }
 
+.dashboard-section[hidden] {
+    display: none;
+}
+
+.dashboard-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.dashboard-section-header a {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.dashboard-section-header a:hover {
+    text-decoration: underline;
+}
+
 table {
     width: 100%;
 

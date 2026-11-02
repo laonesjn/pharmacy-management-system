@@ -119,6 +119,33 @@ function getMedicineExpiryWarning(expiryDate) {
 
 
 // =====================================================
+// LOAD ACTIVE DISCOUNT OPTIONS
+// =====================================================
+
+async function loadDiscountOptions() {
+    try {
+        const response = await fetch("/api/sales/discounts", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            console.error("Unable to load discount options:", data.message);
+            discountOptions = [];
+            return;
+        }
+
+        discountOptions = Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("loadDiscountOptions error:", error);
+        discountOptions = [];
+    }
+}
+
+
+// =====================================================
 // LOAD MEDICINES
 // =====================================================
 
@@ -360,7 +387,7 @@ function addSaleItem() {
     expiryWarning.hidden = true;
     item.appendChild(expiryWarning);
 
-    const priceDisplay =
+    const discountSelect =
         item.querySelector(
             ".discount-select"
         );
@@ -420,12 +447,6 @@ function addSaleItem() {
                 expiryWarning.hidden = true;
             }
 
-        calculateTotal();
-    }
-
-
-    medicineSelect.addEventListener(
-        "change",
         calculateTotal();
     }
 

@@ -20,6 +20,64 @@ document.getElementById("userName").textContent =
  
 document.getElementById("welcomeMessage").textContent = 
     `Welcome, ${user.full_name} (${user.role})`; 
+
+
+const adminDiscountsSection =
+    document.getElementById("adminDiscountsSection");
+const dashboardDiscountsTable =
+    document.getElementById("dashboardDiscountsTable");
+
+async function loadDashboardDiscounts() {
+    if (user.role !== "admin" || !dashboardDiscountsTable) {
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/admin/discounts", {
+            cache: "no-store",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+
+        if (!response.ok || !Array.isArray(data)) {
+            throw new Error(data.message || "Unable to load discounts.");
+        }
+
+        dashboardDiscountsTable.replaceChildren();
+
+        if (data.length === 0) {
+            dashboardDiscountsTable.innerHTML =
+                '<tr><td colspan="3">No discount options found.</td></tr>';
+            return;
+        }
+
+        data.forEach(discount => {
+            const row = document.createElement("tr");
+            const nameCell = document.createElement("td");
+            const percentageCell = document.createElement("td");
+            const statusCell = document.createElement("td");
+            const isActive = Number(discount.is_active) === 1;
+
+            nameCell.textContent = discount.label;
+            percentageCell.textContent = `${Number(discount.percentage).toFixed(2)}%`;
+            statusCell.textContent = isActive ? "Active" : "Inactive";
+            row.append(nameCell, percentageCell, statusCell);
+            dashboardDiscountsTable.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Unable to load dashboard discounts:", error);
+        dashboardDiscountsTable.innerHTML =
+            '<tr><td colspan="3">Unable to load discount options.</td></tr>';
+    }
+}
+
+if (user.role === "admin" && adminDiscountsSection) {
+    adminDiscountsSection.hidden = false;
+    loadDashboardDiscounts();
+    setInterval(loadDashboardDiscounts, 60000);
+}
  
  
 async function loadDashboard() { 
